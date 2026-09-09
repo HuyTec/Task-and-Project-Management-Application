@@ -28,10 +28,10 @@ INSERT INTO users (
     username, display_name, password, email, role, created_at, is_deactivated
 )
 SELECT
-    'page_user_' || LPAD(series::text, 2, '1'),
-    'Page User ' || LPAD(series::text, 2, '1'),
+    'page_user_' || LPAD(series::text, 2, '0'),
+    'Page User ' || LPAD(series::text, 2, '0'),
     '$2a$10$.C04uYvjROUuXZ8hXEFcBOyQJcbAntzua1ffgtNti30PxlVnQ1SqW',
-    'page_user_' || LPAD(series::text, 2, '1') || '@example.test',
+    'page_user_' || LPAD(series::text, 2, '0') || '@example.test',
     'USER',
     CURRENT_TIMESTAMP - (series || ' days')::interval,
     series % 9 = 0
@@ -85,7 +85,7 @@ SELECT
         WHEN series % 3 = 0 THEN 'Prepare report and review pagination search behaviour.'
         ELSE 'Local task fixture for paging and filter verification.'
     END,
-    (ARRAY['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'])[((series - 1) % 4) + 1],
+    (ARRAY['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'CHANGES_REQUESTED', 'DONE'])[((series - 1) % 5) + 1],
     (ARRAY['LOW', 'MEDIUM', 'HIGH', 'URGENT'])[((series - 1) % 4) + 1],
     demo.id,
     (
