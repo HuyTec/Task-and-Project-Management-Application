@@ -4,6 +4,7 @@ import {
   addTaskCriterion,
   approveTask,
   assignTask,
+  assignTaskReviewer,
   claimTask,
   clearTaskAssignee,
   deleteTaskCriterion,
@@ -31,10 +32,12 @@ function AssignmentPanel({ task, membership, members, busyAction, runAction }) {
     [members],
   )
   const [selectedUsername, setSelectedUsername] = useState('')
+  const [reviewerUsername, setReviewerUsername] = useState('')
 
   useEffect(() => {
     setSelectedUsername(assignment?.assigneeUsername || candidates[0]?.username || '')
   }, [assignment?.assigneeUsername, candidates])
+  useEffect(() => setReviewerUsername(task.reviewerUsername || ''), [task.reviewerUsername])
 
   return (
     <section className="workflow-card">
@@ -75,6 +78,12 @@ function AssignmentPanel({ task, membership, members, busyAction, runAction }) {
           {assignment && <button className="text-button action-button--delete" type="button" disabled={Boolean(busyAction)} onClick={() => runAction('clear-assignee', () => clearTaskAssignee(task.id), 'Assignee removed.')}>Remove assignee</button>}
         </div>
       )}
+      {canManage && assignmentMutable && (
+        <div className="assignment-manager">
+          <label className="form-field"><span>Designated reviewer</span><select value={reviewerUsername} onChange={(event) => setReviewerUsername(event.target.value)} disabled={Boolean(busyAction)}><option value="">Select reviewer</option>{candidates.filter((member) => member.username !== assignment?.assigneeUsername).map((member) => <option key={member.username} value={member.username}>{member.displayName || member.username} · {formatEnum(member.role)}</option>)}</select></label>
+          <button className="primary-button primary-button--fit" type="button" disabled={Boolean(busyAction) || !reviewerUsername || reviewerUsername === task.reviewerUsername} onClick={() => runAction('reviewer', () => assignTaskReviewer(task.id, reviewerUsername), 'Reviewer assigned successfully.')}>Assign reviewer</button>
+        </div>
+      )}
     </section>
   )
 }
@@ -83,7 +92,6 @@ function CriteriaPanel({ task, membership, busyAction, runAction }) {
   const criteria = task.acceptanceCriteria || []
   const canManage = membership.role === 'OWNER' || membership.role === 'MANAGER'
   const canEditStructure = canManage && task.status === 'TODO'
-  const canReview = canManage && task.status === 'IN_REVIEW'
   const [content, setContent] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editingContent, setEditingContent] = useState('')
@@ -125,17 +133,7 @@ function CriteriaPanel({ task, membership, busyAction, runAction }) {
       <div className="criteria-list">
         {criteria.map((criterion) => (
           <article className={`criterion-row ${criterion.satisfied ? 'criterion-row--satisfied' : ''}`} key={criterion.id}>
-            {canReview ? (
-              <input
-                aria-label={`Mark ${criterion.content} as satisfied`}
-                type="checkbox"
-                checked={criterion.satisfied}
-                disabled={Boolean(busyAction)}
-                onChange={(event) => runAction(`criterion-${criterion.id}`, () => updateTaskCriterion(task.id, criterion.id, { satisfied: event.target.checked }), event.target.checked ? 'Criterion marked as satisfied.' : 'Criterion reopened.')}
-              />
-            ) : (
-              <span className="criterion-indicator" aria-hidden="true">{criterion.satisfied ? '✓' : criterion.position + 1}</span>
-            )}
+            <span className="criterion-indicator" aria-hidden="true">{criterion.position + 1}</span>
 
             {editingId === criterion.id ? (
               <input className="criterion-edit-input" value={editingContent} maxLength="1000" autoFocus onChange={(event) => setEditingContent(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') saveCriterion(criterion); if (event.key === 'Escape') setEditingId(null) }} />
@@ -163,20 +161,13 @@ function CriteriaPanel({ task, membership, busyAction, runAction }) {
           <button className="primary-button primary-button--fit" type="submit" disabled={Boolean(busyAction) || !content.trim()}>Add criterion</button>
         </form>
       )}
-      {!canEditStructure && task.status !== 'TODO' && <p className="workflow-note">Criterion wording is locked after work starts. During review, OWNER/MANAGER can mark each item as satisfied.</p>}
+      {!canEditStructure && task.status !== 'TODO' && <p className="workflow-note">Criterion wording is locked after work starts. Results are recorded only on the submitted review.</p>}
     </section>
   )
 }
 
-function ReviewPanel({ task, membership, busyAction, runAction }) {
-  const assignment = task.activeAssignment
-  const criteria = task.acceptanceCriteria || []
+function ReviewPanel({ task, membership }) {
   const reviews = task.reviews || []
-  const canManage = membership.role === 'OWNER' || membership.role === 'MANAGER'
-  const isAssignee = assignment?.assigneeUsername === membership.username
-  const canReview = canManage && task.status === 'IN_REVIEW'
-  const allSatisfied = criteria.length > 0 && criteria.every((criterion) => criterion.satisfied)
-  const [reason, setReason] = useState('')
 
   return (
     <section className="workflow-card workflow-card--review" id="review">
@@ -185,19 +176,7 @@ function ReviewPanel({ task, membership, busyAction, runAction }) {
         <span className={`detail-status detail-status--${task.status.toLowerCase()}`}>{formatEnum(task.status)}</span>
       </div>
 
-      {isAssignee && ['IN_PROGRESS', 'CHANGES_REQUESTED'].includes(task.status) && <p className="workflow-note">Create a Submission and attach evidence before sending this task to review.</p>}
-
-      {canReview && (
-        <div className="review-controls">
-          <p className="workflow-note">Review every criterion first. Approval is enabled only when every item is satisfied.</p>
-          <button className="primary-button" type="button" disabled={Boolean(busyAction) || !allSatisfied} onClick={() => runAction('approve', () => approveTask(task.id), 'Task approved and completed.')}>Approve task</button>
-          <div className="review-divider"><span>or request revisions</span></div>
-          <label className="form-field"><span>Change request reason</span><textarea value={reason} maxLength="5000" rows="5" placeholder="Explain what is missing and what result you expect" onChange={(event) => setReason(event.target.value)} /></label>
-          <button className="text-button review-request-button" type="button" disabled={Boolean(busyAction) || !reason.trim()} onClick={() => runAction('request-changes', () => requestTaskChanges(task.id, reason.trim()), 'Changes requested and returned to the assignee.', () => setReason(''))}>Request changes</button>
-        </div>
-      )}
-
-      {!canReview && task.status !== 'DONE' && <p className="workflow-empty">No reviewer action is available for your role at this stage.</p>}
+      <p className="workflow-note">Reviewer: {task.reviewerUsername ? `@${task.reviewerUsername}` : 'not assigned yet'}. Decisions and criterion results are available only from the submission review screen.</p>
 
       <div className="review-history">
         <h3>Review history</h3>
@@ -255,7 +234,7 @@ function TaskWorkflowPanel({ task, membership, members, onChanged }) {
           <CriteriaPanel task={task} membership={membership} busyAction={busyAction} runAction={runAction} />
           <SubmissionPanel task={task} membership={membership} onChanged={onChanged} />
         </div>
-        <ReviewPanel task={task} membership={membership} busyAction={busyAction} runAction={runAction} />
+        <ReviewPanel task={task} membership={membership} />
       </div>
     </section>
   )

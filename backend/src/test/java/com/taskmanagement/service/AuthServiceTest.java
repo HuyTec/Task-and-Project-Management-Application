@@ -70,6 +70,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         user = new User();
+        user.setSecurityStamp(null); // Existing accounts retain their legacy sessions until a security change.
         user.setId(7L);
         user.setUsername("alice");
         user.setDisplayName("Alice");
@@ -370,6 +371,16 @@ class AuthServiceTest {
 
     private RegisterRequest registerRequest() {
         return new RegisterRequest("Alice", "alice", "Password123!", "alice@example.com");
+    }
+
+    @Test
+    void refreshRejectsSessionFromBeforePasswordChange() {
+        user.setSecurityStamp("new-stamp");
+        when(jwtService.parseRefreshToken("old-token"))
+                .thenReturn(new RefreshTokenClaims("alice", "old-session", "token-1"));
+        when(userRepository.findByUsernameAndIsDeactivatedFalse("alice")).thenReturn(Optional.of(user));
+        assertThatThrownBy(() -> authService.refresh("old-token")).isInstanceOf(InvalidRefreshTokenException.class);
+        verifyNoInteractions(authSessionService);
     }
 
     private GoogleProfile googleProfile() {

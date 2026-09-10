@@ -12,7 +12,7 @@ function TaskCard({ task, busy, onDelete, onDragStart, onEdit, onStatusChange })
   const workflowManaged = task.projectId != null
   const canManageProject = task.currentUserRole === 'OWNER' || task.currentUserRole === 'MANAGER'
   const canEdit = !workflowManaged || canManageProject
-  const canReview = workflowManaged && canManageProject && task.status === 'IN_REVIEW'
+  const canReview = workflowManaged && task.status === 'IN_REVIEW'
   return (
     <article
       className={`task-card task-card--${task.priority?.toLowerCase()}`}

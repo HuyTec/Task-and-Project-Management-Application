@@ -15,6 +15,14 @@ import io.jsonwebtoken.JwtException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<Response<Void>> handleStaleWrite(org.springframework.dao.OptimisticLockingFailureException ex) {
+        return build(HttpStatus.CONFLICT, "Account changed in another request. Reload and try again.");
+    }
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<Response<Void>> handleStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode()).body(Response.error(ex.getReason()));
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Response<Void>> handleResourceNotFound(ResourceNotFoundException ex) {

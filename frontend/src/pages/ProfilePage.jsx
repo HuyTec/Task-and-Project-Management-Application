@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getMyProfile, updateMyProfile } from '../api/userApi'
-import PasswordField from '../components/auth/PasswordField'
+import AccountSecurityPanel from '../components/auth/AccountSecurityPanel'
 import AppShell from '../components/layout/AppShell'
 import StatePanel from '../components/ui/StatePanel'
 import { formatDateTime, formatEnum } from '../utils/entityFormatters'
@@ -10,9 +10,9 @@ import getApiErrorMessage from '../utils/getApiErrorMessage'
 function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [displayName, setDisplayName] = useState('')
-  const [newPassword, setNewPassword] = useState('')
   const [profilePictureUrl, setProfilePictureUrl] = useState('')
   const [imageFailed, setImageFailed] = useState(false)
+  const [previewFailed, setPreviewFailed] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -51,7 +51,6 @@ function ProfilePage() {
     const normalizedDisplayName = displayName.trim()
     const update = {}
     if (normalizedDisplayName !== (profile.displayName || '')) update.displayName = normalizedDisplayName
-    if (newPassword) update.password = newPassword
     if (profilePictureUrl.trim() !== (profile.profilePictureUrl || '')) update.profilePictureUrl = profilePictureUrl.trim()
 
     if (Object.keys(update).length === 0) {
@@ -64,7 +63,6 @@ function ProfilePage() {
       const updatedProfile = await updateMyProfile(update)
       setProfile(updatedProfile)
       setDisplayName(updatedProfile.displayName || '')
-      setNewPassword('')
       setProfilePictureUrl(updatedProfile.profilePictureUrl || '')
       setImageFailed(false)
       setSuccessMessage('Profile updated successfully.')
@@ -103,7 +101,7 @@ function ProfilePage() {
                   <div><dt>Created</dt><dd>{formatDateTime(profile.createdAt)}</dd></div>
                   <div><dt>Last updated</dt><dd>{formatDateTime(profile.updatedAt)}</dd></div>
                 </dl>
-                <p className="privacy-note">Username and email are read-only under the current backend policy.</p>
+                <p className="privacy-note">Change your username in Account protection below. Email changes require address verification and are not available yet.</p>
               </section>
 
               <section className="profile-panel profile-panel--edit">
@@ -112,17 +110,18 @@ function ProfilePage() {
                   <div className="field-group"><label htmlFor="displayName">Display name</label><input id="displayName" name="displayName" value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength="2" maxLength="50" required /></div>
                   <div className="field-group">
                     <label htmlFor="profilePictureUrl">Profile picture URL</label>
-                    <input id="profilePictureUrl" name="profilePictureUrl" type="url" value={profilePictureUrl} onChange={(event) => setProfilePictureUrl(event.target.value)} placeholder="https://example.com/avatar.jpg" maxLength="255" pattern="https://.*" />
+                    <input id="profilePictureUrl" name="profilePictureUrl" type="url" value={profilePictureUrl} onChange={(event) => { setProfilePictureUrl(event.target.value); setPreviewFailed(false) }} placeholder="https://example.com/avatar.jpg" maxLength="255" pattern="https://.*" />
                     <div className="avatar-control"><span>Use a public HTTPS image URL.</span>{profilePictureUrl && <button className="text-button action-button--delete" type="button" onClick={() => setProfilePictureUrl('')}>Remove picture</button>}</div>
                   </div>
-                  <PasswordField id="newPassword" label="New password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" placeholder="Leave blank to keep current password" required={false} />
-                  <p className="field-help">A new password must contain at least 8 characters.</p>
+                  {profilePictureUrl.startsWith('https://') && (previewFailed ? <p role="status" className="field-help">Unable to preview this image. Check that the URL points to an accessible image.</p> : <div className="profile-avatar"><img key={profilePictureUrl} src={profilePictureUrl} alt="New avatar preview" referrerPolicy="no-referrer" onError={() => setPreviewFailed(true)} /></div>)}
+                  <button className="text-button" type="button" disabled={isSubmitting} onClick={() => { setDisplayName(profile.displayName || ''); setProfilePictureUrl(profile.profilePictureUrl || ''); setPreviewFailed(false); setError(''); setSuccessMessage('') }}>Discard unsaved changes</button>
                   {error && <p className="form-alert form-alert--error" role="alert">{error}</p>}
                   {successMessage && <p className="form-alert form-alert--success" role="status">{successMessage}</p>}
                   <button className="primary-button" type="submit" disabled={isSubmitting}><span>{isSubmitting ? 'Saving...' : 'Save changes'}</span></button>
                 </form>
               </section>
             </div>
+            <AccountSecurityPanel profile={profile} />
           </>
         )}
     </AppShell>

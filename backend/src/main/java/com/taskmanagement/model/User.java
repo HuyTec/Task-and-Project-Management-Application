@@ -54,6 +54,17 @@ public class User {
     
     private boolean isDeactivated = false;
 
+    @Column(name = "security_stamp", length = 36)
+    private String securityStamp = java.util.UUID.randomUUID().toString();
+
+    @jakarta.persistence.Version
+    @Column(name = "row_version", nullable = false)
+    private Long rowVersion;
+
+    public boolean acceptsSession(String sessionId) {
+        return securityStamp == null || (sessionId != null && sessionId.startsWith(securityStamp + "."));
+    }
+
     @PrePersist
     protected void onCreate(){
         this.createdAt = LocalDateTime.now();

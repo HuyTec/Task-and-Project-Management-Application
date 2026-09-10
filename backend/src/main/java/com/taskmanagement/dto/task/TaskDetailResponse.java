@@ -20,6 +20,7 @@ public record TaskDetailResponse(
     LocalDate dueDate,
     List<AcceptanceCriterionResponse> acceptanceCriteria,
     TaskAssignmentResponse activeAssignment,
+    String reviewerUsername,
     List<TaskReviewResponse> reviews,
     List<ExpenseResponse> expenses,
     Double total
@@ -40,7 +41,7 @@ public record TaskDetailResponse(
     ) {
         this(
                 id, title, description, status, priority, userId, projectId,
-                createdAt, updatedAt, dueDate, List.of(), null, List.of(), expenses, total
+                createdAt, updatedAt, dueDate, List.of(), null, null, List.of(), expenses, total
         );
     }
 }

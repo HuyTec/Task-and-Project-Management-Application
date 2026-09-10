@@ -17,6 +17,8 @@ public interface UserMapper {
     @Mapping(target = "deactivated", ignore = true)
     @Mapping(target = "role", ignore = true)
     @Mapping(target = "profilePictureUrl", ignore = true)
+    @Mapping(target = "securityStamp", ignore = true)
+    @Mapping(target = "rowVersion", ignore = true)
 
     public User toUser(CreateUserRequest request);
 }

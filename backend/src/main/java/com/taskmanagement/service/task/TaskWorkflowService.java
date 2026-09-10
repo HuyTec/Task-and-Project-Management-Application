@@ -3,6 +3,7 @@ package com.taskmanagement.service.task;
 import com.taskmanagement.dto.Response;
 import com.taskmanagement.dto.task.AcceptanceCriterionResponse;
 import com.taskmanagement.dto.task.AssignTaskRequest;
+import com.taskmanagement.dto.task.AssignReviewerRequest;
 import com.taskmanagement.dto.task.CreateAcceptanceCriterionRequest;
 import com.taskmanagement.dto.task.CreateProjectTaskRequest;
 import com.taskmanagement.dto.task.RequestChangesRequest;
@@ -23,6 +24,8 @@ public interface TaskWorkflowService {
     Response<TaskAssignmentResponse> assign(Long taskId, AssignTaskRequest request);
 
     Response<Void> clearAssignee(Long taskId);
+
+    Response<Void> assignReviewer(Long taskId, AssignReviewerRequest request);
 
     Response<TaskWorkflowResponse> start(Long taskId);
 

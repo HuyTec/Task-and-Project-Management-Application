@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.taskmanagement.dto.Response;
 import com.taskmanagement.dto.task.AcceptanceCriterionResponse;
 import com.taskmanagement.dto.task.AssignTaskRequest;
+import com.taskmanagement.dto.task.AssignReviewerRequest;
 import com.taskmanagement.dto.task.CreateAcceptanceCriterionRequest;
 import com.taskmanagement.dto.task.CreateProjectTaskRequest;
 import com.taskmanagement.dto.task.RequestChangesRequest;
@@ -131,6 +132,9 @@ public class TaskWorkflowServiceImpl implements TaskWorkflowService {
         if (actor.getRole() != ProjectRole.MEMBER) {
             throw new ForbiddenException("Only project MEMBER can claim an unassigned task");
         }
+        if (task.getReviewer() != null && task.getReviewer().getId().equals(actor.getId())) {
+            throw new BadRequestException("Reviewer must be different from the assignee");
+        }
         requireTaskOpenForAssignment(task);
         requireNoActiveAssignment(taskId);
 
@@ -176,6 +180,9 @@ public class TaskWorkflowServiceImpl implements TaskWorkflowService {
         if (assignee.getRole() == ProjectRole.VIEWER) {
             throw new ForbiddenException("VIEWER cannot be assigned project tasks");
         }
+        if (task.getReviewer() != null && task.getReviewer().getId().equals(assignee.getId())) {
+            throw new BadRequestException("Assignee must be different from the designated reviewer");
+        }
 
         // Small teams may assign delivery work to OWNER or MANAGER; only VIEWER is ineligible.
         assignmentRepository.findByTaskIdAndStatus(taskId, AssignmentStatus.ACTIVE)
@@ -188,6 +195,8 @@ public class TaskWorkflowServiceImpl implements TaskWorkflowService {
                 manager,
                 AssignmentType.ASSIGNED
         ));
+        submissionRepository.findFirstByTaskIdAndStatusOrderBySequenceNumberDesc(taskId, SubmissionStatus.DRAFT)
+                .ifPresent(draft -> draft.setAssignee(assignee));
         evictTaskForProjectMembers(task);
         return Response.success(workflowMapper.toAssignmentResponse(saved), "Task assigned successfully!");
     }
@@ -200,6 +209,31 @@ public class TaskWorkflowServiceImpl implements TaskWorkflowService {
         cancelAssignment(requireActiveAssignment(taskId));
         evictTaskForProjectMembers(task);
         return Response.success(null, "Task assignee removed successfully!");
+    }
+
+    @Override
+    public Response<Void> assignReviewer(Long taskId, AssignReviewerRequest request) {
+        Task task = requireLockedProjectTask(taskId);
+        requireCurrentManager(task);
+        if (task.getStatus() == TaskStatus.IN_REVIEW || task.getStatus() == TaskStatus.DONE) {
+            throw new ConflictException("Reviewer cannot change after a submission is sent for review");
+        }
+        ProjectMember reviewer = memberRepository.findByProjectIdAndUserUsername(
+                        task.getProject().getId(), request.username().trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Project reviewer not found!"));
+        if (reviewer.getRole() == ProjectRole.VIEWER) {
+            throw new ForbiddenException("VIEWER cannot review a task");
+        }
+        assignmentRepository.findByTaskIdAndStatus(taskId, AssignmentStatus.ACTIVE)
+                .ifPresent(assignment -> {
+                    if (assignment.getAssignee().getId().equals(reviewer.getId())) {
+                        throw new BadRequestException("Reviewer must be different from the assignee");
+                    }
+                });
+        task.setReviewer(reviewer);
+        taskRepository.save(task);
+        evictTaskForProjectMembers(task);
+        return Response.success(null, "Reviewer assigned successfully!");
     }
 
     @Override
@@ -253,16 +287,10 @@ public class TaskWorkflowServiceImpl implements TaskWorkflowService {
         TaskAcceptanceCriterion criterion = criterionRepository.findByIdAndTaskId(criterionId, taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Acceptance criterion not found!"));
 
-        if (request.content() == null && request.satisfied() == null && request.position() == null) {
+        if (request.content() == null && request.position() == null) {
             throw new BadRequestException("At least one criterion field must be provided");
         }
-        if (request.content() != null || request.position() != null) {
-            // Scope is frozen after work starts; review may only change satisfaction state.
-            requireCriteriaStructureMutable(task);
-        }
-        if (request.satisfied() != null && task.getStatus() != TaskStatus.IN_REVIEW) {
-            throw new BadRequestException("Criteria can only be reviewed while task is IN_REVIEW");
-        }
+        requireCriteriaStructureMutable(task);
         if (request.content() != null) {
             if (request.content().isBlank()) {
                 throw new BadRequestException("Criterion content cannot be blank");
@@ -272,10 +300,6 @@ public class TaskWorkflowServiceImpl implements TaskWorkflowService {
         if (request.position() != null) {
             criterion.setPosition(request.position());
         }
-        if (request.satisfied() != null) {
-            criterion.setSatisfied(request.satisfied());
-        }
-
         TaskAcceptanceCriterion saved = criterionRepository.save(criterion);
         evictTaskForProjectMembers(task);
         return Response.success(workflowMapper.toCriterionResponse(saved), "Acceptance criterion updated successfully!");
@@ -306,50 +330,13 @@ public class TaskWorkflowServiceImpl implements TaskWorkflowService {
             RequestChangesRequest request
     ) {
         Task task = requireLockedProjectTask(taskId);
-        ProjectMember reviewer = requireCurrentManager(task);
-        requireInReview(task);
-        requireIndependentReviewer(taskId, reviewer);
-        Submission submission = requireSubmittedSubmission(taskId);
-
-        List<TaskAcceptanceCriterion> criteria = criterionRepository
-                .findByTaskIdOrderByPositionAsc(taskId);
-        criteria.forEach(criterion -> criterion.setSatisfied(false));
-
-        TaskReview review = newReview(
-                task,
-                submission,
-                reviewer,
-                ReviewDecision.CHANGES_REQUESTED,
-                request.message().trim()
-        );
-        TaskReview saved = reviewRepository.save(review);
-        task.setStatus(TaskStatus.CHANGES_REQUESTED);
-        taskRepository.save(task);
-        evictTaskForProjectMembers(task);
-        return Response.success(workflowMapper.toReviewResponse(saved), "Task changes requested successfully!");
+        throw new ConflictException("Submit the decision from the submission review screen");
     }
 
     @Override
     public Response<TaskReviewResponse> approve(Long taskId) {
         Task task = requireLockedProjectTask(taskId);
-        ProjectMember reviewer = requireCurrentManager(task);
-        requireInReview(task);
-        requireIndependentReviewer(taskId, reviewer);
-        Submission submission = requireSubmittedSubmission(taskId);
-        List<TaskAcceptanceCriterion> criteria = criterionRepository.findByTaskIdOrderByPositionAsc(taskId);
-        if (criteria.isEmpty()) {
-            throw new BadRequestException("Task requires at least one acceptance criterion before approval");
-        }
-        if (criterionRepository.existsByTaskIdAndSatisfiedFalse(taskId)) {
-            throw new BadRequestException("All acceptance criteria must be satisfied before approval");
-        }
-
-        TaskReview review = newReview(task, submission, reviewer, ReviewDecision.APPROVED, null);
-        TaskReview saved = reviewRepository.save(review);
-        task.setStatus(TaskStatus.DONE);
-        taskRepository.save(task);
-        evictTaskForProjectMembers(task);
-        return Response.success(workflowMapper.toReviewResponse(saved), "Task approved successfully!");
+        throw new ConflictException("Submit the decision from the submission review screen");
     }
 
     private Task requireLockedProjectTask(Long taskId) {

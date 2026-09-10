@@ -10,6 +10,8 @@ function PasswordField({
   required = true,
   description,
   error,
+  disabled = false,
+  minLength = 8,
 }) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
@@ -20,6 +22,7 @@ function PasswordField({
         <button
           className="text-button"
           type="button"
+          disabled={disabled}
           aria-pressed={isPasswordVisible}
           onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
         >
@@ -34,7 +37,8 @@ function PasswordField({
         onChange={onChange}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        minLength="8"
+        minLength={minLength}
+        disabled={disabled}
         aria-describedby={error ? `${id}-error` : description ? `${id}-description` : undefined}
         aria-invalid={Boolean(error)}
         required={required}

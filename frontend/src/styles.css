@@ -395,6 +395,15 @@ img, svg { max-width: 100%; }
 .workflow-main { display: grid; gap: 18px; }
 .workflow-card { padding: clamp(20px,3vw,30px); border: 1px solid var(--accent-soft); border-radius: var(--radius-lg); background: rgba(255,253,248,.94); box-shadow: var(--shadow-sm); }
 .workflow-card--review { position: sticky; top: 104px; }
+.profile-panel--security { margin-top: 28px; border-top: 3px solid var(--accent); }
+.profile-panel--security .profile-form { max-width: 720px; }
+.security-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 18px; }
+
+.submission-review-layout { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(320px, 1.2fr) minmax(360px, 1.4fr); gap: 20px; align-items: start; }
+.evidence-preview-frame { width: 100%; min-height: 280px; border: 1px solid var(--accent-soft); border-radius: 10px; margin: 12px 0; background: #fff; }
+.evidence-preview-image { display: block; max-width: 100%; max-height: 420px; object-fit: contain; margin: 12px 0; border-radius: 10px; }
+.submission-review-layout .criterion-row textarea { width: 100%; margin-top: 8px; }
+@media (max-width: 1100px) { .submission-review-layout { grid-template-columns: 1fr; } }
 .workflow-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .workflow-card__heading h2 { margin: 0; font-size: clamp(1.3rem,2.4vw,1.8rem); letter-spacing: -.025em; }
 .assignment-state, .criteria-progress { flex: 0 0 auto; padding: 7px 9px; border-radius: 999px; color: var(--muted); background: var(--surface-muted); font-size: .68rem; font-weight: 800; }

@@ -135,6 +135,7 @@ public class AuthService {
                 .orElseThrow(InvalidRefreshTokenException::new);
 
         String newTokenId = UUID.randomUUID().toString();
+        if (!user.acceptsSession(claims.sessionId())) throw new InvalidRefreshTokenException();
         boolean rotated = authSessionService.rotate(
                 claims.sessionId(),
                 claims.tokenId(),
@@ -169,6 +170,7 @@ public class AuthService {
     }
 
     private AccessInfo issueSession(User user, String sessionId) {
+        if (user.getSecurityStamp() != null) sessionId = user.getSecurityStamp() + "." + sessionId;
         String tokenId = UUID.randomUUID().toString();
         String accessToken = jwtService.generateAccessToken(user.getUsername(), sessionId);
         String refreshToken = jwtService.generateRefreshToken(

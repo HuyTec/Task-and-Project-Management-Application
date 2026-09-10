@@ -43,6 +43,8 @@ import com.taskmanagement.repository.MemberRepository;
 import com.taskmanagement.repository.TaskAcceptanceCriterionRepository;
 import com.taskmanagement.repository.TaskAssignmentRepository;
 import com.taskmanagement.repository.TaskReviewRepository;
+import com.taskmanagement.repository.SubmissionReviewRepository;
+import com.taskmanagement.model.SubmissionReviewStatus;
 import com.taskmanagement.repository.UserRepository;
 import com.taskmanagement.repository.projection.TaskTotalProjection;
 import com.taskmanagement.security.CustomUserDetails;
@@ -74,6 +76,7 @@ public class TaskService {
     private final TaskAssignmentRepository assignmentRepository;
     private final TaskAcceptanceCriterionRepository criterionRepository;
     private final TaskReviewRepository reviewRepository;
+    private final SubmissionReviewRepository submissionReviewRepository;
     private final TaskMapper taskMapper;
     private final TaskWorkflowMapper workflowMapper;
     private final ExpenseMapper expenseMapper;
@@ -416,9 +419,12 @@ public class TaskService {
                 .findByTaskIdAndStatus(task.getId(), AssignmentStatus.ACTIVE)
                 .map(workflowMapper::toAssignmentResponse)
                 .orElse(null);
-        List<TaskReviewResponse> reviews = reviewRepository
-                .findByTaskIdOrderByCreatedAtAsc(task.getId()).stream()
-                .map(workflowMapper::toReviewResponse)
+        List<TaskReviewResponse> reviews = submissionReviewRepository
+                .findBySubmissionTaskIdAndStatusOrderBySubmittedAtAsc(task.getId(), SubmissionReviewStatus.SUBMITTED).stream()
+                .map(review -> new TaskReviewResponse(review.getId(), task.getId(), review.getSubmission().getId(),
+                        review.getDecision(), review.getMessage(), review.getReviewer().getUser().getUsername(),
+                        review.getDecision() == com.taskmanagement.model.ReviewDecision.APPROVED
+                                ? TaskStatus.DONE : TaskStatus.CHANGES_REQUESTED, review.getSubmittedAt()))
                 .toList();
         return taskMapper.toTaskDetailResponse(
                 task,

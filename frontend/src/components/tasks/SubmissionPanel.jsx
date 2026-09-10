@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import {
   addSubmissionLinkEvidence,
@@ -103,6 +104,7 @@ function SubmissionPanel({ task, membership, onChanged }) {
             <div>
               <strong>@{submission.assigneeUsername}</strong>
               <small>{formatDateTime(submission.submittedAt || submission.createdAt)}</small>
+              {submission.status === 'SUBMITTED' && task.reviewerUsername === membership.username && <Link className="primary-button primary-button--fit" to={`/submissions/${submission.id}/review`}>Open review</Link>}
               {submission.evidences.map((evidence) => <p key={evidence.id}><a href={evidence.url} target="_blank" rel="noreferrer">{evidence.displayName}</a> · {formatEnum(evidence.evidenceType)} {submission.status === 'DRAFT' && <button className="text-button action-button--delete" type="button" disabled={Boolean(busy)} onClick={() => run(`delete-${evidence.id}`, () => deleteSubmissionEvidence(submission.id, evidence.id))}>Remove</button>}</p>)}
             </div>
           </article>

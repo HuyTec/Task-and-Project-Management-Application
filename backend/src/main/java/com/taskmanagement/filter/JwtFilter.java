@@ -27,11 +27,14 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailService;
     private final AuthSessionService authSessionService;
+    private final com.taskmanagement.repository.UserRepository userRepository;
 
-    JwtFilter(JwtService jwtService, UserDetailsService userDetailService, AuthSessionService authSessionService) {
+    JwtFilter(JwtService jwtService, UserDetailsService userDetailService, AuthSessionService authSessionService,
+            com.taskmanagement.repository.UserRepository userRepository) {
         this.jwtService = jwtService;
         this.userDetailService = userDetailService;
         this.authSessionService = authSessionService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -76,6 +79,11 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
+        var account = userRepository.findByUsernameAndIsDeactivatedFalse(claims.username());
+        if (account.isEmpty() || !account.get().acceptsSession(claims.sessionId())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         UserDetails userDetails = userDetailService.loadUserByUsername(claims.username());
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());

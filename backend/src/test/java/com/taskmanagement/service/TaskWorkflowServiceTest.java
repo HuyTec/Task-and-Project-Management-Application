@@ -393,7 +393,7 @@ class TaskWorkflowServiceTest {
         assertThatThrownBy(() -> service.updateCriterion(
                 42L,
                 5L,
-                new UpdateAcceptanceCriterionRequest("Changed scope", null, null)
+                new UpdateAcceptanceCriterionRequest("Changed scope", null)
         ))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Criteria content and order can only change while task is TODO");

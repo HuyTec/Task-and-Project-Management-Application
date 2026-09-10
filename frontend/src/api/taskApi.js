@@ -55,6 +55,11 @@ export async function clearTaskAssignee(taskId, signal) {
   return response.data.data
 }
 
+export async function assignTaskReviewer(taskId, username, signal) {
+  const response = await apiClient.put(`/tasks/${taskId}/reviewer`, { username }, { signal })
+  return response.data.data
+}
+
 export async function startTask(taskId, signal) {
   const response = await apiClient.post(`/tasks/${taskId}/start`, null, { signal })
   return response.data.data
@@ -112,5 +117,20 @@ export async function deleteSubmissionEvidence(submissionId, evidenceId, signal)
 
 export async function submitTaskSubmission(submissionId, signal) {
   const response = await apiClient.post(`/submissions/${submissionId}/submit`, null, { signal })
+  return response.data.data
+}
+
+export async function getSubmissionReview(submissionId, signal) {
+  const response = await apiClient.get(`/submissions/${submissionId}/review`, { signal })
+  return response.data.data
+}
+
+export async function saveSubmissionReviewDraft(submissionId, payload, signal) {
+  const response = await apiClient.put(`/submissions/${submissionId}/review/draft`, payload, { signal })
+  return response.data.data
+}
+
+export async function submitSubmissionReview(submissionId, payload, signal) {
+  const response = await apiClient.post(`/submissions/${submissionId}/review/decision`, payload, { signal })
   return response.data.data
 }

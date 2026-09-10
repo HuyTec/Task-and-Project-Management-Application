@@ -36,6 +36,10 @@ public class GoogleIdTokenService {
      * exposing identity claims to the application authentication layer.
      */
     public GoogleProfile verify(String credential) {
+        return verify(credential, false);
+    }
+
+    private GoogleProfile verify(String credential, boolean requireRecent) {
         if (clientId.isBlank()) {
             throw new IllegalStateException("Google client ID is not configured");
         }
@@ -50,6 +54,13 @@ public class GoogleIdTokenService {
             }
 
             GoogleIdToken.Payload payload = idToken.getPayload();
+            if (requireRecent) {
+                Long issuedAt = payload.getIssuedAtTimeSeconds();
+                long now = java.time.Instant.now().getEpochSecond();
+                if (issuedAt == null || issuedAt < now - 300 || issuedAt > now + 30) {
+                    throw new InvalidGoogleCredentialException();
+                }
+            }
             String subject = requireClaim(payload.getSubject());
             String email = requireClaim(payload.getEmail());
 
@@ -76,6 +87,10 @@ public class GoogleIdTokenService {
         )
                 .setAudience(List.of(normalizedClientId))
                 .build();
+    }
+
+    public GoogleProfile verifyRecent(String credential) {
+        return verify(credential, true);
     }
 
     private static String requireClaim(String value) {

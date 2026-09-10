@@ -15,7 +15,7 @@ public record UpdateUserRequest(
     @Email(message = "Email is invalid")
     String email,
 
-    @Size(min = 8, message = "Password must be at least 8 characters long")
+    @Null(message = "Use the account security endpoint to change your password")
     String password,
 
     @Size(max = 255, message = "Profile picture URL must be at most 255 characters long")

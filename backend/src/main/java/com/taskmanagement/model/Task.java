@@ -65,6 +65,10 @@ public class Task {
     @JoinColumn(name = "project_id")
     private Project project;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewer_id")
+    private ProjectMember reviewer;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 

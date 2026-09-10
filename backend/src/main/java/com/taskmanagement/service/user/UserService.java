@@ -78,6 +78,9 @@ public class UserService {
     }
 
     private User updateUser(User user, UpdateUserRequest request) {
+        if (request.password() != null || request.username() != null || request.email() != null) {
+            throw new BadRequestException("Login details require a separate verified security change");
+        }
         updateUsernameIfChanged(user, request);
         updateEmailIfChanged(user, request);
         updateDisplayNameIfChanged(user, request);
@@ -102,7 +105,9 @@ public class UserService {
 
     private void updateDisplayNameIfChanged(User user, UpdateUserRequest request) {
         if (request.displayName() == null) return;
-        user.setDisplayName(request.displayName());
+        String name = request.displayName().trim();
+        if (name.length() < 2 || name.length() > 50) throw new BadRequestException("Display name must contain 2 to 50 characters");
+        user.setDisplayName(name);
     }
 
     private void updatePasswordIfChanged(User user, UpdateUserRequest request) {
@@ -176,8 +181,10 @@ public class UserService {
         return Response.success(userResponse, "User updated successfully!");
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public Response<UserResponse> updateUserByUsername(String username, UpdateUserRequest userRequest) {
-        User user = findUserOrThrow(username);
+        User user = userRepository.findForSecurityUpdate(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         User savedUser = updateUser(user, userRequest);
         UserResponse userResponse = userMapper.toUserResponse(savedUser);
         return Response.success(userResponse, "User updated successfully!");

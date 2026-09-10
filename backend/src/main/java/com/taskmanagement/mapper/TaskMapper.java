@@ -44,6 +44,7 @@ public interface TaskMapper {
     @Mapping(target = "status", source = "task.status")
     @Mapping(target = "acceptanceCriteria", source = "acceptanceCriteria")
     @Mapping(target = "activeAssignment", source = "activeAssignment")
+    @Mapping(target = "reviewerUsername", source = "task.reviewer.user.username")
     @Mapping(target = "reviews", source = "reviews")
     @Mapping(target = "expenses", source = "expenses")
     @Mapping(target = "total", source = "total")

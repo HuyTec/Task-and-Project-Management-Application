@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.taskmanagement.dto.Response;
 import com.taskmanagement.dto.task.AssignTaskRequest;
+import com.taskmanagement.dto.task.AssignReviewerRequest;
 import com.taskmanagement.dto.task.TaskAssignmentResponse;
 import com.taskmanagement.service.task.TaskWorkflowService;
 
@@ -24,6 +25,12 @@ import lombok.RequiredArgsConstructor;
 public class TaskAssignmentController {
 
     private final TaskWorkflowService taskWorkflowService;
+
+    @PutMapping("/reviewer")
+    public ResponseEntity<Response<Void>> assignReviewer(@PathVariable @Positive Long taskId,
+            @RequestBody @Valid AssignReviewerRequest request) {
+        return ResponseEntity.ok(taskWorkflowService.assignReviewer(taskId, request));
+    }
 
     @PostMapping("/claim")
     public ResponseEntity<Response<TaskAssignmentResponse>> claim(

@@ -36,8 +36,10 @@ import com.taskmanagement.model.TaskAssignment;
 import com.taskmanagement.model.TaskEvidence;
 import com.taskmanagement.model.TaskStatus;
 import com.taskmanagement.model.UploadStatus;
+import com.taskmanagement.model.SubmissionCriterionSnapshot;
 import com.taskmanagement.repository.MemberRepository;
 import com.taskmanagement.repository.SubmissionRepository;
+import com.taskmanagement.repository.SubmissionCriterionSnapshotRepository;
 import com.taskmanagement.repository.TaskAcceptanceCriterionRepository;
 import com.taskmanagement.repository.TaskAssignmentRepository;
 import com.taskmanagement.repository.TaskEvidenceRepository;
@@ -58,6 +60,7 @@ public class SubmissionService {
     );
 
     private final SubmissionRepository submissionRepository;
+    private final SubmissionCriterionSnapshotRepository snapshotRepository;
     private final TaskEvidenceRepository evidenceRepository;
     private final TaskRepository taskRepository;
     private final TaskAssignmentRepository assignmentRepository;
@@ -207,6 +210,12 @@ public class SubmissionService {
         if (!criterionRepository.existsByTaskId(task.getId())) {
             throw new BadRequestException("Task requires at least one acceptance criterion before review");
         }
+        if (task.getReviewer() == null) {
+            throw new BadRequestException("A designated reviewer is required before submission");
+        }
+        if (task.getReviewer().getId().equals(submission.getAssignee().getId())) {
+            throw new ConflictException("Reviewer must be different from the assignee");
+        }
         List<TaskEvidence> evidence = evidenceRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId);
         if (evidence.isEmpty()) {
             throw new BadRequestException("Submission requires at least one evidence item");
@@ -215,6 +224,15 @@ public class SubmissionService {
             throw new ConflictException("All file uploads must be READY before submission");
         }
 
+        snapshotRepository.saveAll(criterionRepository.findByTaskIdOrderByPositionAsc(task.getId()).stream()
+                .map(criterion -> {
+                    SubmissionCriterionSnapshot snapshot = new SubmissionCriterionSnapshot();
+                    snapshot.setSubmission(submission);
+                    snapshot.setSourceCriterionId(criterion.getId());
+                    snapshot.setContent(criterion.getContent());
+                    snapshot.setPosition(criterion.getPosition());
+                    return snapshot;
+                }).toList());
         submission.setStatus(SubmissionStatus.SUBMITTED);
         submission.setSubmittedAt(LocalDateTime.now());
         task.setStatus(TaskStatus.IN_REVIEW);
@@ -344,8 +362,8 @@ public class SubmissionService {
 
     private boolean canRead(Submission submission, ProjectMember actor) {
         return submission.getAssignee().getId().equals(actor.getId())
-                || actor.getRole() == ProjectRole.OWNER
-                || actor.getRole() == ProjectRole.MANAGER;
+                || (submission.getTask().getReviewer() != null
+                && submission.getTask().getReviewer().getId().equals(actor.getId()));
     }
 
     private void requireReadPermission(Submission submission, ProjectMember actor) {

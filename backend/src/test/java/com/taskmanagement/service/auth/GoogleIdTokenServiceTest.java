@@ -98,4 +98,24 @@ class GoogleIdTokenServiceTest {
                 .setEmail("alice@example.com")
                 .setEmailVerified(true);
     }
+
+    @Test void recentVerifiedTokenIsAcceptedForSecurityChange() throws Exception {
+        var payload = validPayload().setIssuedAtTimeSeconds(java.time.Instant.now().getEpochSecond());
+        when(verifier.verify("recent")).thenReturn(idToken);
+        when(idToken.getPayload()).thenReturn(payload);
+        assertThat(service.verifyRecent("recent").subject()).isEqualTo("google-subject");
+    }
+
+    @Test void oldVerifiedTokenCannotBeReusedForSecurityChange() throws Exception {
+        var payload = validPayload().setIssuedAtTimeSeconds(java.time.Instant.now().getEpochSecond() - 360);
+        when(verifier.verify("old")).thenReturn(idToken);
+        when(idToken.getPayload()).thenReturn(payload);
+        assertThatThrownBy(() -> service.verifyRecent("old")).isInstanceOf(InvalidGoogleCredentialException.class);
+    }
+
+    @Test void missingIssueTimeCannotAuthorizeSecurityChange() throws Exception {
+        when(verifier.verify("missing-time")).thenReturn(idToken);
+        when(idToken.getPayload()).thenReturn(validPayload());
+        assertThatThrownBy(() -> service.verifyRecent("missing-time")).isInstanceOf(InvalidGoogleCredentialException.class);
+    }
 }

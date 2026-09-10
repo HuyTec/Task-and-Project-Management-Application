@@ -22,6 +22,26 @@ import lombok.RequiredArgsConstructor;
 public class UserController {
 
     private final UserService userService;
+    private final com.taskmanagement.service.user.AccountSecurityService accountSecurity;
+    @org.springframework.beans.factory.annotation.Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
+
+    @GetMapping("/me/security")
+    public Response<java.util.Map<String, Boolean>> security() {
+        return Response.success(java.util.Map.of("googleLinked", accountSecurity.googleLinked(
+                SecurityContextHolder.getContext().getAuthentication().getName())), "Account security");
+    }
+
+    @PostMapping("/me/security")
+    public Response<Void> changeSecurity(@RequestBody @Valid com.taskmanagement.dto.user.AccountSecurityRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
+        accountSecurity.change(SecurityContextHolder.getContext().getAuthentication().getName(), request);
+        var cookie = new jakarta.servlet.http.Cookie("refresh-token", "");
+        cookie.setPath("/api/auth"); cookie.setMaxAge(0); cookie.setHttpOnly(true);
+        cookie.setSecure(cookieSecure); cookie.setAttribute("SameSite", "Lax");
+        response.addCookie(cookie);
+        return Response.success(null, "Security updated. Sign in again on all devices.");
+    }
 
     // ADMIN ONLY — xem toàn bộ user trong hệ thống
     @GetMapping

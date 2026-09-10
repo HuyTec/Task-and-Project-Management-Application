@@ -10,7 +10,6 @@ import com.taskmanagement.dto.task.TaskFilter;
 import com.taskmanagement.dto.task.TaskWorkspaceView;
 import com.taskmanagement.model.AssignmentStatus;
 import com.taskmanagement.model.ProjectMember;
-import com.taskmanagement.model.ProjectRole;
 import com.taskmanagement.model.Task;
 import com.taskmanagement.model.TaskAssignment;
 
@@ -104,14 +103,7 @@ public final class TaskSpecifications {
             CriteriaBuilder criteriaBuilder,
             Long userId
     ) {
-        Subquery<Long> membershipQuery = query.subquery(Long.class);
-        Root<ProjectMember> membership = membershipQuery.from(ProjectMember.class);
-        membershipQuery.select(membership.get("id")).where(
-                criteriaBuilder.equal(membership.get("project").get("id"), task.get("project").get("id")),
-                criteriaBuilder.equal(membership.get("user").get("id"), userId),
-                membership.get("role").in(ProjectRole.OWNER, ProjectRole.MANAGER)
-        );
-        return criteriaBuilder.exists(membershipQuery);
+        return criteriaBuilder.equal(task.get("reviewer").get("user").get("id"), userId);
     }
 
     public static Specification<Task> all(TaskFilter filter) {

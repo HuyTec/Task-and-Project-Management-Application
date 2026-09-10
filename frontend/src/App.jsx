@@ -21,6 +21,7 @@ import RegisterPage from './pages/RegisterPage'
 import TasksPage from './pages/TasksPage'
 import TaskDetailPage from './pages/TaskDetailPage'
 import TaskCreatePage from './pages/TaskCreatePage'
+import SubmissionReviewPage from './pages/SubmissionReviewPage'
 
 function RequireAuth({ children }) {
   const accessToken = localStorage.getItem('accessToken')
@@ -96,6 +97,7 @@ function App() {
       <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
       <Route path="/tasks/new" element={<RequireAuth><TaskCreatePage /></RequireAuth>} />
       <Route path="/tasks/:taskId" element={<RequireAuth><TaskDetailPage /></RequireAuth>} />
+      <Route path="/submissions/:submissionId/review" element={<RequireAuth><SubmissionReviewPage /></RequireAuth>} />
       <Route path="/projects" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
       <Route path="/projects/:projectId" element={<RequireAuth><ProjectDetailPage /></RequireAuth>} />
       <Route path="/projects/:projectId/members" element={<RequireAuth><ProjectMembersPage /></RequireAuth>} />

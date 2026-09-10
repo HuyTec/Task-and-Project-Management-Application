@@ -13,12 +13,14 @@ function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [securityUpdated] = useState(() => sessionStorage.getItem('securityUpdated') === 'true')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState('')
   const [linkPassword, setLinkPassword] = useState('')
 
   function completeLogin(data) {
+    sessionStorage.removeItem('securityUpdated')
     if (!data?.accessToken) throw new Error('Access token was not returned by the server')
     localStorage.setItem('accessToken', data.accessToken)
     navigate('/dashboard')
@@ -121,6 +123,7 @@ function LoginPage() {
             </button>
           </form>
           <div className="auth-divider" aria-hidden="true"><span>or</span></div>
+          {securityUpdated && <p className="form-alert form-alert--success" role="status">Account security updated. Sign in again with your updated details.</p>}
           <GoogleSignInButton
             disabled={isSubmitting || isGoogleSubmitting}
             onCredential={handleGoogleCredential}
